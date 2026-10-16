@@ -1,0 +1,31 @@
+# Dependencies (image ke andar fresh install hoti hain)
+**/node_modules
+
+# Secrets - kabhi image mein nahi jane chahiye
+**/.env
+**/.env.*
+
+# Build output / logs
+**/dist
+**/build
+**/*.log
+
+# Git, CI aur docs
+.git
+.github
+.gitignore
+**/.gitignore
+README.md
+**/README.md
+
+# Docker files khud
+Dockerfile
+.dockerignore
+
+# Vercel config (Docker mein zaroorat nahi)
+**/vercel.json
+
+# OS / editor files
+.DS_Store
+.vscode
+.idea

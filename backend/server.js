@@ -1,0 +1,77 @@
+const path = require('path');
+const fs = require('fs');
+const express = require('express');
+const dotenv = require('dotenv');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+
+const connectDB = require('./config/db');
+const { notFound, errorHandler } = require('./middleware/errorMiddleware');
+
+dotenv.config();
+connectDB();
+
+const app = express();
+
+// Security + parsing middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      'img-src': ["'self'", 'data:', 'https:'],
+      'upgrade-insecure-requests': null,
+    },
+  },
+}));
+
+app.use(cors({
+  origin: '*', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json());
+
+if (process.env.NODE_ENV !== 'production') {
+  app.use(morgan('dev'));
+}
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,
+  message: { message: 'Too many requests, please try again later.' },
+});
+app.use('/api', limiter);
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/doctors', require('./routes/doctorRoutes'));
+app.use('/api/appointments', require('./routes/appointmentRoutes'));
+app.use('/api/reviews', require('./routes/reviewRoutes'));
+
+// Docker/production: built React app (backend/public) ko Express se serve karo
+const publicDir = path.join(__dirname, 'public');
+if (fs.existsSync(path.join(publicDir, 'index.html'))) {
+  app.use(express.static(publicDir));
+  app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({ message: 'Doctor Booking API is running...' });
+  });
+}
+
+app.use(notFound);
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT} 🚀`));
+
+// Vercel serverless environment ke liye yeh line lazmi hai
+module.exports = app;
